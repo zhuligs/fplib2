@@ -20,15 +20,18 @@ def get_gom(lseg, rxyz, rcov, amp):
 
 def get_fp_nonperiodic(rxyz, types):
     rcov = []
-    amp = [1.0] * len(rxzy)
+    amp = [1.0] * len(rxyz)
     for x in types:
         rcov.append(rcovdata.rcovdata[x][2])
     gom = get_gom(1, rxyz, rcov, amp)
     fp = np.linalg.eigvals(gom)
+    fp = sorted(fp)
+    fp = np.array(fp, float)
     return fp
 
 def get_fpdist_nonperiodic(fp1, fp2):
-    return np.sqrt(np.vdot(fp1, fp2)) / len(fp1)
+    d = fp1 - fp2
+    return np.sqrt(np.vdot(d, d))
 
 
 
