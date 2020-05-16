@@ -136,7 +136,7 @@ def get_fp(contract, ntyp, nx, lmax, lat, rxyz, types, znucl, cutoff):
         gom = get_gom(lseg, rxyz_sphere, rcov_sphere, amp)
         val, vec = np.linalg.eig(gom)
         val = np.real(val)
-        fp0 = np.zeros(nx)
+        fp0 = np.zeros(nx*lseg)
         for i in range(len(val)):
             fp0[i] = val[i]
         lfp.append(sorted(fp0))
