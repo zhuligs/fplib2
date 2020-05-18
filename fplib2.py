@@ -1,5 +1,5 @@
 import numpy as np
-from munkres import Munkres
+from scipy.optimize import linear_sum_assignment
 import rcovdata
 # import numba
 
@@ -52,19 +52,19 @@ def get_gom(lseg, rxyz, rcov, amp):
                 om[4*iat+3][4*jat+2] = stv * (d[1] * d[2]        ) * amp[iat] * amp[jat]
                 om[4*iat+3][4*jat+3] = stv * (d[2] * d[2] - 0.5/r) * amp[iat] * amp[jat]
     
-    for i in range(len(om)):
-        for j in range(len(om)):
-            if abs(om[i][j] - om[j][i]) > 1e-6:
-                print ("ERROR", i, j, om[i][j], om[j][i])
+    # for i in range(len(om)):
+    #     for j in range(len(om)):
+    #         if abs(om[i][j] - om[j][i]) > 1e-6:
+    #             print ("ERROR", i, j, om[i][j], om[j][i])
     return om
 
 
 # @numba.jit()
-def get_fp_nonperiodic(rxyz, types, znucl):
+def get_fp_nonperiodic(rxyz, znucls):
     rcov = []
     amp = [1.0] * len(rxyz)
-    for x in types:
-        rcov.append(rcovdata.rcovdata[znucl[x-1]][2])
+    for x in znucls:
+        rcov.append(rcovdata.rcovdata[x][2])
     gom = get_gom(1, rxyz, rcov, amp)
     fp = np.linalg.eigvals(gom)
     fp = sorted(fp)
@@ -149,10 +149,10 @@ def get_fp(contract, ntyp, nx, lmax, lat, rxyz, types, znucl, cutoff):
                 for j in range(nid):
                     # print ind[i], ind[j]
                     omx[ind[i]][ind[j]] = omx[ind[i]][ind[j]] + pvec[i] * gom[i][j] * pvec[j]
-            for i in range(nids):
-                for j in range(nids):
-                    if abs(omx[i][j] - omx[j][i]) > 1e-6:
-                        print ("ERROR", i, j, omx[i][j], omx[j][i])
+            # for i in range(nids):
+            #     for j in range(nids):
+            #         if abs(omx[i][j] - omx[j][i]) > 1e-6:
+            #             print ("ERROR", i, j, omx[i][j], omx[j][i])
             # print omx
             sfp0 = np.linalg.eigvals(omx)
             sfp.append(sorted(sfp0))
@@ -180,30 +180,20 @@ def get_ixyz(lat, cutoff):
 # @numba.jit()
 def get_fpdist(ntyp, types, fp1, fp2):
     nat, lenfp = np.shape(fp1)
-    # print nat, lenfp
     fpd = 0.0
     for ityp in range(ntyp):
         itype = ityp + 1
-        M = []
+        MX = np.zeros((nat, nat))
         for iat in range(nat):
-            m = []
             if types[iat] == itype:
                 for jat in range(nat):
                     if types[jat] == itype:
                         tfpd = fp1[iat] - fp2[jat]
-                        tt = np.sqrt(np.vdot(tfpd, tfpd)/lenfp)
-                        m.append(tt)
-            M.append(m)
+                        MX[iat][jat] = np.sqrt(np.vdot(tfpd, tfpd)/lenfp)
 
-        Mu = Munkres()
-        indexes = Mu.compute(M)
-        total = 0.0
-        # print len(M), len(M[0])
-        # print indexes
-        for i, j in indexes:
-            v = M[i][j]
-            total += v
-
+        row_ind, col_ind = linear_sum_assignment(MX)
+        # print(row_ind, col_ind)
+        total = MX[row_ind, col_ind].sum()
         fpd += total
 
     fpd = fpd / nat
